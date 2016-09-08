@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+import os
+import sys
+import fileinput
+import datetime
+
+def match(rule):
+    date_matches = None
+    weekday_matches = None
+    time_matches = None
+
+    for range in rule.split():
+        parts = range.split('-')
+        if len(parts) > 2:
+            eprint("Invalid range on line: "+line)
+            return False
+
+        start = parts[0]
+        end = start
+        if len(parts) > 1:
+            end = parts[1]
+
+        any_applied = False
+
+        applied, result, error = date_match(start, end)
+        if error:
+            eprint("Invalid date on line: "+line)
+            return false
+
+        if applied:
+            any_applied = True
+            if result:
+                date_matches = True
+            else:
+                if not date_matches:
+                    date_matches = False
+
+        applied, result, error = weekday_match(start, end)
+        if error:
+            eprint("Invalid weekday on line: "+line)
+            return false
+
+        if applied:
+            any_applied = True
+            if result:
+                weekday_matches = True
+            else:
+                if not weekday_matches:
+                    weekday_matches = False
+
+        applied, result, error = time_match(start, end)
+        if error:
+            eprint("Invalid time on line: "+line)
+            return false
+
+        if applied:
+            any_applied = True
+            if result:
+                time_matches = True
+            else:
+                if not time_matches:
+                    time_matches = False
+
+        if not any_applied:
+            eprint("Invalid part on line: "+line)
+            return False
+       
+    return date_matches != False and weekday_matches != False and time_matches != False
+
+
+def date_match(start_str, end_str):
+    def read_date(date_str):
+        parts = date_str.split('.')
+        if len(parts) != 3:
+            return False
+
+        try:
+            year = int(parts[0])
+            month = int(parts[1])
+            day = int(parts[2])
+            return year * 10000 + month * 100 + day
+        except ValueError:
+            return False
+
+    start = read_date(start_str)
+    if start is False:
+        return False, False, False
+
+    end = read_date(end_str)
+    if end is False:
+        return False, False, True
+
+    return True, start <= date and date <= end, False
+
+
+def weekday_match(start_str, end_str):
+    def read_weekday(weekday_str):
+        weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+        if weekday_str in weekdays:
+            return weekdays.index(weekday_str)
+        return False
+
+    start = read_weekday(start_str)
+    if start is False:
+        return False, False, False
+
+    end = read_weekday(end_str)
+    if end is False:
+        return False, False, True
+
+    wrapped_weekday = weekday
+    if wrapped_weekday < start:
+        wrapped_weekday = wrapped_weekday + 7
+
+    if end < start:
+        end = end +7
+
+    return True, start <= wrapped_weekday and wrapped_weekday <= end, False
+
+
+def time_match(start_str, end_str):
+    def read_time(time_str):
+        parts = time_str.split(':')
+        if len(parts) != 2:
+            return False
+
+        try:
+            hour = int(parts[0])
+            minute = int(parts[1])
+            return hour * 60 + minute
+        except ValueError:
+            return False
+
+    start = read_time(start_str)
+    if start is False:
+        return False, False, False
+
+    end = read_time(end_str)
+    if end is False:
+        return False, False, True
+
+    return True, start <= time and time <= end, False
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+now = datetime.datetime.today()
+now_env = os.environ.get('DATE', None)
+if now_env:
+    now = datetime.datetime.strptime(now_env, "%Y-%m-%dT%H:%M")
+
+
+date = now.year * 10000 + now.month * 100 + now.day
+weekday = now.weekday()
+time = now.hour * 60 + now.minute
+
+for line in fileinput.input():
+    rule = line.split('#')[0].strip()
+    if rule == '':
+        continue
+
+    if match(rule):
+        exit(0)
+
+exit(1)

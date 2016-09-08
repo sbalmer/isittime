@@ -1,0 +1,40 @@
+#!/bin/sh
+
+test() {
+    echo "$4" | DATE=$2 ./isittime
+    if [ $? != $3 ]
+    then
+        echo "$1 FAILED"
+        exit 1
+    fi
+}
+
+test "empty"           "2016-09-12T10:10" 1 ""
+test "comment"         "2016-09-12T10:10" 1 "# hello"
+test "invalid weekday" "2016-09-12T10:10" 1 "monn"          2> /dev/null
+test "invalid weekday" "2016-09-12T10:10" 1 "mon-tu"        2> /dev/null
+test "invalid date"    "2016-10-10T10:10" 1 "2016.10.10.10" 2> /dev/null
+test "invalid year"    "2016-10-10T10:10" 1 ".10.10"        2> /dev/null
+test "invalid term"    "2016-09-12T10:10" 1 "noooooo"       2> /dev/null
+test "invalid term 2"  "2016-09-12T10:10" 1 "mon-sun bogus" 2> /dev/null
+test "invalid term 3"  "2016-09-12T10:10" 1 "mon-sun -"     2> /dev/null
+
+test "monday-open"    "2016-09-12T10:10" 0 "mon"
+test "monday-closed"  "2016-09-12T10:10" 1 "tue-sun"
+test "tuesday-open"   "2016-09-13T10:10" 0 "tue"
+test "tuesday-closed" "2016-09-13T10:10" 1 "wed-mon"
+
+test "midnight-open"   "2010-01-01T00:00" 0 "00:00"
+test "midnight-closed" "2010-01-01T00:00" 1 "23:59 00:01"
+test "noon-open"       "2010-01-01T12:00" 0 "12:00"
+test "noon-closed"     "2010-01-01T12:00" 1 "11:59 12:01"
+
+example=`cat example`
+test "example: monday evening open"      "2016-09-05T20:00" 0 "$example"
+test "example: monday morning closed"    "2016-09-05T06:00" 1 "$example"
+test "example: friday afternoon open"    "2016-09-16T15:00" 0 "$example"
+test "example: friday late noon closed"  "2016-09-16T13:05" 1 "$example"
+test "example: special meeting open"     "2016-09-10T10:00" 0 "$example"
+test "example: special meeting closed"   "2016-09-24T10:00" 1 "$example"
+test "example: festivities evening open" "2016-11-27T20:00" 0 "$example"
+test "example: festivities day closed"   "2016-11-27T12:00" 1 "$example"
